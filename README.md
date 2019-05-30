@@ -1,4 +1,4 @@
-# Customer Behavior Analysis
+# Customer Behavior Analysis - Converting "Freemium" customers to "Premium" customers. 
 
 In this project, we analyze the behavior of customers of a mobile app. Their behavior is analyzed through their interaction with the app.
 
