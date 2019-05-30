@@ -1,0 +1,207 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sun May 26 00:38:40 2019
+
+@author: muham
+"""
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from dateutil import parser
+
+dataset = pd.read_csv('appdata10.csv')
+
+dataset.head()
+dataset.describe
+
+dataset['hour'] = dataset.hour.str.slice(1,3).astype(int)
+
+#Plotting data
+# Here we are creating a copy of the original dataset so that
+# we are only left with the numerical part of the dataset
+# Since we dont want to mess around with our original set,
+# we create a copy of our original dataset and work on ir.
+
+dataset2 = dataset.copy().drop(columns = ['user', 'screen_list', 'enrolled_date', 'first_open', 'enrolled' ])
+
+
+# Histograms
+plt.suptitle('Histograms of Numerical Columns', fontsize=20)
+for i in range(1, dataset2.shape[1]+1):
+    plt.subplot(3,3, i)
+    f = plt.gca()
+    f.set_title(dataset2.columns.values[i -1])
+    vals = np.size(dataset2.iloc[:, i -1].unique())
+    plt.hist(dataset2.iloc[:, i-1], bins = vals, color='#3f5d7d')
+             
+             
+# Correlation Plot with Responses.
+dataset2.corrwith(dataset.enrolled).plot.bar(figsize=(20,10),
+                  title = 'Correlation with Response Variable',
+                  fontsize = 15, 
+                  rot = 45,
+                  grid = True,
+                  )
+
+# Correlation of fields on one another
+sns.set(style='white', font_scale=2)
+
+# Now, computing the correlation matrix
+corr = dataset2.corr()
+
+# Generate a mask for the upper triangle
+mask = np.zeros_like(corr, dtype=np.bool)
+mask[np.triu_indices_from(mask)] = True
+
+# Now, we setup the figure size in matplotlib
+f, ax = plt.subplots(figsize=(18, 15))
+f.suptitle('Correlation matrix', fontsize=40)
+
+# Generate a custom diverging colormap
+cmap = sns.diverging_palette(220, 10, as_cmap=True)
+
+sns.heatmap(corr, mask=mask, cmap=cmap, vmax = 3, center=0,
+            square=True, linewidths=.5, cbar_kws={'shrink':.5})
+
+# FEATURE ENGINEERING
+
+# Checking the datatypes of the columns
+dataset.dtypes
+
+# Now, we are converting the date objects to datetime64 objects with specific date format.
+# This will help us in determine when and whether the customers opt for 
+# our premium features.
+# We are using a Python feature called 'list comprehension' to alter specific cell with 
+# a for loop inside the square brackets
+dataset['first_open'] = [parser.parse(row_data) for row_data in dataset['first_open']]
+
+# We preform a similar operation on the 'enrolled_date' column and create a perfect
+# date time column so that we can perform numerical operations on them.
+dataset['enrolled_date'] = [parser.parse(row_data) if isinstance(row_data, str) else row_data for row_data in dataset['enrolled_date']]
+
+# Now, in order to take a difference of hours between the two columns created earlier, we need 
+# to perform a basic calculation, and then convert the result to 'timedelta[h]', to only return the 
+# hour difference and neglecting the minutes and seconds, as those variables are not 
+# required by us.
+dataset['difference'] = (dataset['enrolled_date'] - dataset['first_open']).astype('timedelta64[h]')
+
+
+plt.hist(dataset['difference'].dropna(), color = '#3F5D7D')
+plt.title('Distribution - Time since first enrolled')
+plt.show()
+
+# DATA INSIGHTS -> The above plot shows that most of the customers  (~30,000)
+# chose premium products, or got "enrolled" in those products, within the first 
+# several hours of using the products. 
+
+# Now, lets make sure our inference is corerct, by plotting another 
+# graph with a range between 0,100
+
+plt.hist(dataset['difference'].dropna(), color='#3f5d7d', range=(0,100))
+plt.title('Dist. - Time since enrolled - 0-100')
+plt.show()
+
+# Now, we will only keep the people in our dataset who enrolled within
+# 48 hours of joining the program, because they are our true customers.
+
+dataset.loc[dataset.difference > 48, 'enrolled'] = 0
+dataset = dataset.drop(columns = ['difference', 'enrolled_date', 'first_open'])
+
+# So what we did here is that we first used the columns to calculate the 
+# difference between the first used date and the enrollment data
+# to calculate the avg time between enrollment. Since we dont need
+# these columns anymore, we can drop these columns to reduce the size
+# of the dataset.
+
+
+# Now, we will format the screen_list fields from another dataset
+# Remember, these screens are the screens on the App that our users
+# visited. Since there are a lot of screens, too many to be counted, 
+# we will not let out 
+
+top_screens = pd.read_csv('top_screens.csv').top_screens.values
+
+dataset['screen_list'] = dataset.screen_list.astype(str) + ','
+
+# The for-loop below basically creates a one-hot encoding. 
+# One hot coding becomes much simpler if we are using Keras or TensorFlow
+# for deep learning.
+# The reason we are doing this manyally is because we need to operate on the
+# new matrix. Otherwise the one-hot encoded matrix generated by Keras
+# and TensorFlow are a little more abstract in nature and become difficutlt to
+# work with.
+
+for sc in top_screens:
+    dataset[sc] = dataset.screen_list.str.contains(sc).astype(int)
+    dataset['screen_list'] = dataset.screen_list.str.replace(sc+',', ' ')
+    
+
+dataset['other'] = dataset.screen_list.str.count(',')
+
+dataset = dataset.drop(columns = ['screen_list'])
+
+
+# Funnels - Funnels are a collection of screens that belong to the same set. They are represented
+# in the form of a column as in how many screens does a funnel contain.
+# e.g. All types of savings will be bundled up into a single funnel.
+# Similarly, all of the loans and credits will be bundled up into the same funnel.
+
+
+savings_screens = ["Saving1",
+                    "Saving2",
+                    "Saving2Amount",
+                    "Saving4",
+                    "Saving5",
+                    "Saving6",
+                    "Saving7",
+                    "Saving8",
+                    "Saving9",
+                    "Saving10"]
+
+dataset['SavingsCount'] = dataset[savings_screens].sum(axis = 1)
+dataset = dataset.drop(columns = savings_screens)
+
+
+cm_screens = ["Credit1",
+               "Credit2",
+               "Credit3",
+               "Credit3Container",
+               "Credit3Dashboard"]
+dataset["CMCount"] = dataset[cm_screens].sum(axis=1)
+dataset = dataset.drop(columns=cm_screens)
+
+cc_screens = ["CC1",
+                "CC1Category",
+                "CC3"]
+dataset["CCCount"] = dataset[cc_screens].sum(axis=1)
+dataset = dataset.drop(columns=cc_screens)
+
+loan_screens = ["Loan",
+               "Loan2",
+               "Loan3",
+               "Loan4"]
+dataset["LoansCount"] = dataset[loan_screens].sum(axis=1)
+dataset = dataset.drop(columns=loan_screens)
+
+
+# As we have already summed up these screens, we should now drop each column
+# which sums up to form that funnel, and that is what we did.
+
+
+# Saving Results to a new file
+dataset.head()
+dataset.describe()
+dataset.columns
+
+dataset.to_csv('my_new_appdata10.csv', index = False)
+
+
+
+
+
+
+
+
+
