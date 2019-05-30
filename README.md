@@ -5,6 +5,16 @@ In this project, we analyze the behavior of customers of a mobile app. Their beh
 ### Objective
 The primary objective of the project is to convert free customers to paying subscribers.
 
+### Possible Applications 
+After all is said and done, the bottom line is whether we can use this model anywhere. So following are our possible use cases for the model we created.
+
+1. Amazon Prime - customer analysis when they are simply browsing the website while they are logged in.
+2. Spotify Premium - Learning how free customers interact with the app vs. how premium customers use the app. 
+
+A funny story: Interestingly enough, I noticed Spotify using almost the same model that we creted here (extremely advanced version of this model) on my free Spotify account. I rarely use Spotify app, but when I do, I listen to my favouirite podcasts. Throughout the winter holidays, they kept offering me 3 months for $4.99, then $9.99. That's when I listend to some music and they must have gauged my lifetime customer value to be "X" and therefore gave me that offer. But when I started to listen to Podcasts more, Spotify must have guessed my lower future impact on their premium content, and thus started offering me $0.99 for 3 months, wich Showtime and Hulu.. ALL INCLUDED! Now that's some live Machine Learning right there!
+
+3. Similaryly any business with a Freemium business model can use this model to make templting offers to borderline customers and to attract new paid users. The applications are limitless.
+
 ### Methodology
 The methodology used here was to analyze customer interaction with the app screens. i.e. look at how many people used premium features, how many people interacted with each specific type of loan (there are several loans available to customers), etc. There are a nubmer of features and their interactions with one another, i.e. positively or negatively correlated, available to us in the dataset.
 
